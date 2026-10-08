@@ -247,7 +247,8 @@ async function load() {
   ]);
   const err = c.error || f.error || i.error;
   if (err) {
-    showStatus("Non riesco a caricare i contenuti. Controlla URL e chiave in index.html e che le tabelle esistano.");
+    console.error(err);
+    showStatus("Non riesco a caricare i contenuti. Dettaglio: " + (err.message || "errore sconosciuto") + (err.code ? " [" + err.code + "]" : ""));
     return;
   }
   showStatus("");
