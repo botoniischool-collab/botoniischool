@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archivio scuola</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FAFBFE;
+    --card: #FFFFFF;
+    --ink: #1B2440;
+    --muted: #5A6580;
+    --blue: #2748D8;
+    --blue-soft: #E8EDFF;
+    --hl: #FFE680;
+    --line: #D9DFEE;
+    --danger: #B3261E;
+    --font: "Lexend", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 1rem;
+    line-height: 1.55;
+    color: var(--ink);
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(rgba(39,72,216,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(39,72,216,.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+    min-height: 100vh;
+  }
+  .shell { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  .top { padding: 36px 0 24px; }
+  .top h1 { margin: 0; font-size: 1.9rem; font-weight: 600; letter-spacing: -0.01em; }
+  .top p { margin: 6px 0 0; color: var(--muted); }
+
+  .layout { display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding-bottom: 60px; align-items: start; }
+
+  .nav { display: flex; flex-direction: column; }
+  .nav button {
+    font: inherit; font-weight: 500; text-align: left; cursor: pointer;
+    background: transparent; color: var(--ink);
+    border: 0; border-radius: 6px; padding: 9px 12px; margin: 0 0 4px;
+  }
+  .nav button:hover { background: var(--blue-soft); }
+  .nav button[aria-current="true"] { background: var(--hl); font-weight: 600; }
+  .nav .empty { color: var(--muted); font-size: .92rem; padding: 6px 12px; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px;
+    min-height: 260px;
+  }
+  .panel h2 { margin: 0 0 4px; font-size: 1.4rem; font-weight: 600; }
+  .panel .sub { margin: 0 0 20px; color: var(--muted); font-size: .92rem; }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; align-items: center;
+    padding: 8px 12px; margin-bottom: 20px;
+    background: var(--blue-soft); border-radius: 8px;
+  }
+  .toolbar > * { margin: 4px 8px 4px 0; }
+  .toolbar .spacer { flex: 1; }
+
+  button.primary, button.ghost, button.tool {
+    font: inherit; font-size: .92rem; font-weight: 500; cursor: pointer;
+    border-radius: 6px; padding: 8px 14px; border: 1px solid transparent;
+  }
+  button.primary { background: var(--blue); color: #fff; }
+  button.primary:hover { background: #1e3bb5; }
+  button.tool { background: #fff; color: var(--blue); border-color: var(--blue); }
+  button.tool:hover:not(:disabled) { background: var(--blue-soft); }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  button.ghost:hover { background: var(--paper); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+
+  button.del {
+    font: inherit; font-size: .85rem; cursor: pointer;
+    background: transparent; color: var(--danger);
+    border: 0; border-radius: 4px; padding: 4px 8px;
+  }
+  button.del:hover { background: #FBE9E7; }
+
+  .folder { border-left: 3px solid var(--blue); margin: 0 0 18px; padding-left: 14px; }
+  .folder > summary {
+    cursor: pointer; font-weight: 600; font-size: 1.05rem;
+    list-style: none; display: flex; align-items: center; padding: 4px 0;
+  }
+  .folder > summary::-webkit-details-marker { display: none; }
+  .folder > summary::before { content: "▸"; color: var(--blue); width: 1em; margin-right: 8px; }
+  .folder[open] > summary::before { content: "▾"; }
+  .folder .count { color: var(--muted); font-weight: 400; font-size: .88rem; margin-left: 8px; }
+  .folder > summary .del { margin-left: 8px; }
+  .folder .grow { flex: 1; }
+
+  .list { list-style: none; margin: 6px 0 0; padding: 0; }
+  .item {
+    display: flex; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--line);
+  }
+  .item > * + * { margin-left: 12px; }
+  .item:last-child { border-bottom: 0; }
+  .badge {
+    flex: none; font-size: .78rem; font-weight: 500;
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--blue-soft); color: var(--blue);
+  }
+  .badge.file { background: var(--hl); color: var(--ink); }
+  .item a { color: var(--ink); font-weight: 500; text-decoration-color: var(--blue); text-underline-offset: 3px; overflow-wrap: anywhere; }
+  .item a:hover { color: var(--blue); }
+  .item .host { color: var(--muted); font-size: .85rem; margin-left: 6px; font-weight: 400; }
+  .item .grow { flex: 1; min-width: 0; }
+
+  .loose-title { margin: 0 0 4px; font-size: .95rem; color: var(--muted); font-weight: 500; }
+  .empty-state { color: var(--muted); padding: 24px 0; }
+  .status { padding: 14px 16px; border-radius: 8px; background: #FFF4E5; color: #7A4B00; margin-bottom: 16px; }
+
+  dialog {
+    border: 1px solid var(--line); border-radius: 12px; padding: 24px;
+    width: min(440px, calc(100vw - 32px)); font-family: var(--font); color: var(--ink);
+  }
+  dialog::backdrop { background: rgba(27,36,64,.45); }
+  dialog h3 { margin: 0 0 16px; font-size: 1.2rem; font-weight: 600; }
+  .field { display: block; margin-bottom: 14px; }
+  .field span { display: block; font-size: .9rem; font-weight: 500; margin-bottom: 4px; }
+  .field input, .field select {
+    width: 100%; font: inherit; padding: 9px 10px;
+    border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink);
+  }
+  .actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+  .actions button + button { margin-left: 8px; }
+  .error { color: var(--danger); font-size: .9rem; min-height: 1.2em; margin: 0 0 6px; }
+
+  :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+  @media (pointer: coarse), (min-width: 1500px) {
+    body { font-size: 1.125rem; }
+    .shell { max-width: 1280px; }
+    .layout { grid-template-columns: 290px 1fr; }
+    .nav button, button.primary, button.ghost, button.tool, button.del { min-height: 48px; }
+    .item { padding: 14px 0; }
+  }
+
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; gap: 16px; }
+    .nav { flex-direction: row; overflow-x: auto; padding-bottom: 6px; }
+    .nav button { white-space: nowrap; border: 1px solid var(--line); background: var(--card); margin: 0 8px 0 0; }
+    .nav button[aria-current="true"] { border-color: var(--hl); }
+    .panel { padding: 18px; }
+    .top h1 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="shell">
+    <h1>Archivio scuola</h1>
+    <p>Siti utili e file da scaricare, divisi per categoria.</p>
+  </div>
+</header>
+
+<div class="shell">
+  <div id="status"></div>
+  <div class="layout">
+    <nav class="nav" id="nav" aria-label="Categorie"></nav>
+    <main class="panel" id="main"></main>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <h3 id="dlgTitle"></h3>
+  <form id="dlgForm" method="dialog"></form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ============ CONFIGURAZIONE: incolla qui i tuoi valori di Supabase ============ */
+const SUPABASE_URL = "https://iebhxzkeplwrtcmvnnxe.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_yG2wv3fjADib_5yOl_GEyw_ougx9vMy";
+const ADMIN_EMAIL = "botoniischool@gmail.com";
+const BUCKET = "files";
+/* ================================================================================ */
+
+const configured = !SUPABASE_URL.startsWith("INCOLLA") && !SUPABASE_ANON_KEY.startsWith("INCOLLA");
+const db = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const state = { cats: [], folders: [], items: [], selectedCat: null, admin: false };
+
+const $nav = document.getElementById("nav");
+const $main = document.getElementById("main");
+const $status = document.getElementById("status");
+const dlg = document.getElementById("dlg");
+const dlgTitle = document.getElementById("dlgTitle");
+const dlgForm = document.getElementById("dlgForm");
+
+/* ---------- compatibilità con browser vecchi (es. LIM) ---------- */
+if (!Element.prototype.replaceChildren) {
+  Element.prototype.replaceChildren = function () {
+    while (this.firstChild) this.removeChild(this.firstChild);
+    this.append.apply(this, arguments);
+  };
+}
+
+/* ---------- utilità ---------- */
+function el(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  n.append(...kids);
+  return n;
+}
+function showStatus(msg) {
+  $status.replaceChildren();
+  if (msg) $status.append(el("div", { class: "status", role: "alert" }, msg));
+}
+function normalizeUrl(u) {
+  u = u.trim();
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+  return u;
+}
+function isSafeUrl(u) { return /^https?:\/\//i.test(u); }
+function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } }
+function pathFromUrl(u) {
+  const part = u.split("/object/public/" + BUCKET + "/")[1];
+  return part ? decodeURIComponent(part) : null;
+}
+function check(res) { if (res.error) throw res.error; return res.data; }
+
+/* ---------- dati ---------- */
+async function load() {
+  if (!db) return;
+  const [c, f, i] = await Promise.all([
+    db.from("categories").select("*").order("created_at"),
+    db.from("folders").select("*").order("name"),
+    db.from("items").select("*").order("created_at")
+  ]);
+  const err = c.error || f.error || i.error;
+  if (err) {
+    showStatus("Non riesco a caricare i contenuti. Controlla URL e chiave in index.html e che le tabelle esistano.");
+    return;
+  }
+  showStatus("");
+  state.cats = c.data; state.folders = f.data; state.items = i.data;
+  if (!state.cats.some(x => x.id === state.selectedCat)) state.selectedCat = state.cats[0] ? state.cats[0].id : null;
+  render();
+}
+
+/* ---------- render ---------- */
+function render() { renderNav(); renderMain(); }
+
+function renderNav() {
+  $nav.replaceChildren();
+  if (!state.cats.length) {
+    $nav.append(el("div", { class: "empty" }, "Nessuna categoria."));
+    return;
+  }
+  for (const c of state.cats) {
+    $nav.append(el("button", {
+      type: "button",
+      "aria-current": String(c.id === state.selectedCat),
+      onclick: () => { state.selectedCat = c.id; render(); }
+    }, c.name));
+  }
+}
+
+function itemRow(it) {
+  const safe = isSafeUrl(it.url);
+  const link = el("a", { href: safe ? it.url : "#", target: "_blank", rel: "noopener noreferrer" }, it.title);
+  if (it.kind === "file" && safe) link.setAttribute("download", "");
+  const grow = el("div", { class: "grow" }, link);
+  if (it.kind === "link") grow.append(el("span", { class: "host" }, hostOf(it.url)));
+  const row = el("li", { class: "item" },
+    el("span", { class: "badge " + (it.kind === "file" ? "file" : "") }, it.kind === "file" ? "File" : "Sito"),
+    grow
+  );
+  if (state.admin) row.append(el("button", { type: "button", class: "del", onclick: () => deleteItem(it) }, "Elimina"));
+  return row;
+}
+
+function renderMain() {
+  $main.replaceChildren();
+  const cat = state.cats.find(c => c.id === state.selectedCat);
+
+  if (state.admin) $main.append(buildToolbar(cat));
+
+  if (!cat) {
+    $main.append(el("p", { class: "empty-state" },
+      state.admin ? "Crea la prima categoria con “Nuova categoria”." : "Non c’è ancora nessun contenuto."));
+    return;
+  }
+
+  const folders = state.folders.filter(f => f.category_id === cat.id);
+  const catItems = state.items.filter(i => i.category_id === cat.id);
+  const loose = catItems.filter(i => !i.folder_id);
+
+  const head = el("div", {}, el("h2", {}, cat.name),
+    el("p", { class: "sub" }, `${folders.length} ${folders.length === 1 ? "cartella" : "cartelle"} · ${catItems.length} ${catItems.length === 1 ? "elemento" : "elementi"}`));
+  $main.append(head);
+  if (state.admin) {
+    head.append(el("button", { type: "button", class: "del", onclick: () => deleteCategory(cat) }, "Elimina categoria"));
+  }
+
+  if (loose.length) {
+    $main.append(el("p", { class: "loose-title" }, "Fuori dalle cartelle"));
+    $main.append(el("ul", { class: "list" }, ...loose.map(itemRow)));
+  }
+
+  for (const f of folders) {
+    const its = catItems.filter(i => i.folder_id === f.id);
+    const sum = el("summary", {}, el("span", { class: "grow" }, f.name), el("span", { class: "count" }, String(its.length)));
+    if (state.admin) {
+      sum.append(el("button", { type: "button", class: "del", onclick: (e) => { e.preventDefault(); deleteFolder(f); } }, "Elimina"));
+    }
+    const body = its.length
+      ? el("ul", { class: "list" }, ...its.map(itemRow))
+      : el("p", { class: "empty-state" }, "Cartella vuota.");
+    $main.append(el("details", { class: "folder", open: "" }, sum, body));
+  }
+
+  if (!loose.length && !folders.length) {
+    $main.append(el("p", { class: "empty-state" }, "Questa categoria è vuota."));
+  }
+}
+
+function buildToolbar(cat) {
+  const hasCat = !!cat;
+  return el("div", { class: "toolbar" },
+    el("button", { type: "button", class: "tool", onclick: addCategory }, "Nuova categoria"),
+    el("button", { type: "button", class: "tool", disabled: !hasCat, onclick: addFolder }, "Nuova cartella"),
+    el("button", { type: "button", class: "tool", disabled: !hasCat, onclick: addSite }, "Aggiungi sito"),
+    el("button", { type: "button", class: "tool", disabled: !hasCat, onclick: addFile }, "Carica file"),
+    el("span", { class: "spacer" }),
+    el("button", { type: "button", class: "ghost", onclick: logout }, "Esci")
+  );
+}
+
+/* ---------- finestra con modulo ---------- */
+function openForm({ title, fields, submit, onSubmit }) {
+  dlgTitle.textContent = title;
+  dlgForm.replaceChildren();
+  for (const f of fields) {
+    let input;
+    if (f.type === "select") {
+      input = el("select", { name: f.name });
+      for (const o of f.options) input.append(el("option", { value: o.value }, o.label));
+    } else {
+      input = el("input", { name: f.name, type: f.type || "text" });
+      if (f.placeholder) input.placeholder = f.placeholder;
+      if (f.accept) input.accept = f.accept;
+      if (f.value) input.value = f.value;
+      if (f.autocomplete) input.setAttribute("autocomplete", f.autocomplete);
+    }
+    if (f.required) input.required = true;
+    dlgForm.append(el("label", { class: "field" }, el("span", {}, f.label), input));
+  }
+  const err = el("p", { class: "error", role: "alert" });
+  const okBtn = el("button", { type: "submit", class: "primary" }, submit);
+  dlgForm.append(err, el("div", { class: "actions" },
+    el("button", { type: "button", class: "ghost", onclick: () => dlg.close() }, "Annulla"), okBtn));
+  dlgForm.onsubmit = async (e) => {
+    e.preventDefault();
+    err.textContent = "";
+    okBtn.disabled = true;
+    try {
+      await onSubmit(new FormData(dlgForm));
+      dlg.close();
+      await load();
+    } catch (ex) {
+      err.textContent = ex.message || "Errore imprevisto. Riprova.";
+    } finally {
+      okBtn.disabled = false;
+    }
+  };
+  dlg.showModal();
+  const first = dlgForm.querySelector("input, select");
+  if (first) first.focus();
+}
+
+function folderOptions() {
+  const opts = [{ value: "", label: "Nessuna cartella" }];
+  state.folders.filter(f => f.category_id === state.selectedCat)
+    .forEach(f => opts.push({ value: f.id, label: f.name }));
+  return opts;
+}
+
+/* ---------- azioni admin ---------- */
+function addCategory() {
+  openForm({
+    title: "Nuova categoria",
+    submit: "Crea categoria",
+    fields: [{ name: "name", label: "Nome", required: true, placeholder: "Es. Matematica" }],
+    onSubmit: async (fd) => {
+      const row = check(await db.from("categories").insert({ name: fd.get("name").trim() }).select().single());
+      state.selectedCat = row.id;
+    }
+  });
+}
+
+function addFolder() {
+  openForm({
+    title: "Nuova cartella",
+    submit: "Crea cartella",
+    fields: [{ name: "name", label: "Nome della cartella", required: true, placeholder: "Es. Verifiche 2026" }],
+    onSubmit: async (fd) => {
+      check(await db.from("folders").insert({ category_id: state.selectedCat, name: fd.get("name").trim() }));
+    }
+  });
+}
+
+function addSite() {
+  openForm({
+    title: "Aggiungi sito",
+    submit: "Salva sito",
+    fields: [
+      { name: "title", label: "Titolo", required: true },
+      { name: "url", label: "Indirizzo del sito", required: true, placeholder: "https://…" },
+      { name: "folder", label: "Cartella", type: "select", options: folderOptions() }
+    ],
+    onSubmit: async (fd) => {
+      check(await db.from("items").insert({
+        category_id: state.selectedCat,
+        folder_id: fd.get("folder") || null,
+        title: fd.get("title").trim(),
+        kind: "link",
+        url: normalizeUrl(fd.get("url"))
+      }));
+    }
+  });
+}
+
+function addFile() {
+  openForm({
+    title: "Carica file",
+    submit: "Carica",
+    fields: [
+      { name: "file", label: "File (max 50 MB)", type: "file", required: true },
+      { name: "title", label: "Titolo (se vuoto uso il nome del file)" },
+      { name: "folder", label: "Cartella", type: "select", options: folderOptions() }
+    ],
+    onSubmit: async (fd) => {
+      const file = fd.get("file");
+      if (!file || !file.size) throw new Error("Scegli un file.");
+      const path = `${Date.now()}-${file.name.replace(/[^\w.\-]+/g, "_")}`;
+      check(await db.storage.from(BUCKET).upload(path, file));
+      const { data } = db.storage.from(BUCKET).getPublicUrl(path);
+      check(await db.from("items").insert({
+        category_id: state.selectedCat,
+        folder_id: fd.get("folder") || null,
+        title: (fd.get("title") || "").trim() || file.name,
+        kind: "file",
+        url: data.publicUrl
+      }));
+    }
+  });
+}
+
+async function removeFilesOf(items) {
+  const paths = items.filter(i => i.kind === "file").map(i => pathFromUrl(i.url)).filter(Boolean);
+  if (paths.length) await db.storage.from(BUCKET).remove(paths);
+}
+
+async function deleteItem(it) {
+  if (!confirm(`Eliminare “${it.title}”?`)) return;
+  try {
+    await removeFilesOf([it]);
+    check(await db.from("items").delete().eq("id", it.id));
+    await load();
+  } catch (e) { showStatus("Eliminazione non riuscita: " + e.message); }
+}
+
+async function deleteFolder(f) {
+  const its = state.items.filter(i => i.folder_id === f.id);
+  if (!confirm(`Eliminare la cartella “${f.name}” e i suoi ${its.length} elementi?`)) return;
+  try {
+    await removeFilesOf(its);
+    check(await db.from("folders").delete().eq("id", f.id));
+    await load();
+  } catch (e) { showStatus("Eliminazione non riuscita: " + e.message); }
+}
+
+async function deleteCategory(c) {
+  const its = state.items.filter(i => i.category_id === c.id);
+  if (!confirm(`Eliminare la categoria “${c.name}” con tutte le cartelle e i ${its.length} elementi?`)) return;
+  try {
+    await removeFilesOf(its);
+    check(await db.from("categories").delete().eq("id", c.id));
+    await load();
+  } catch (e) { showStatus("Eliminazione non riuscita: " + e.message); }
+}
+
+/* ---------- accesso admin (si apre con /#admin) ---------- */
+function openLogin() {
+  openForm({
+    title: "Accesso admin",
+    submit: "Entra",
+    fields: [
+      { name: "email", label: "Email", type: "email", required: true, value: ADMIN_EMAIL, autocomplete: "username" },
+      { name: "password", label: "Password", type: "password", required: true, autocomplete: "current-password" }
+    ],
+    onSubmit: async (fd) => {
+      const { error } = await db.auth.signInWithPassword({ email: fd.get("email").trim(), password: fd.get("password") });
+      if (error) throw new Error("Email o password non corretti.");
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+  });
+}
+
+async function logout() {
+  await db.auth.signOut();
+}
+
+function applySession(session) {
+  state.admin = !!session && session.user.email === ADMIN_EMAIL;
+  render();
+}
+
+/* ---------- avvio ---------- */
+(async function init() {
+  if (!configured) {
+    showStatus("Prima di usare il sito, inserisci SUPABASE_URL e SUPABASE_ANON_KEY all’inizio dello script in index.html.");
+    $main.append(el("p", { class: "empty-state" }, "Sito non ancora configurato."));
+    return;
+  }
+  const { data } = await db.auth.getSession();
+  state.admin = !!data.session && data.session.user.email === ADMIN_EMAIL;
+  db.auth.onAuthStateChange((_evt, session) => applySession(session));
+  await load();
+  if (location.hash === "#admin" && !state.admin) openLogin();
+  window.addEventListener("hashchange", () => {
+    if (location.hash === "#admin" && !state.admin) openLogin();
+  });
+})();
+</script>
+</body>
+</html>
