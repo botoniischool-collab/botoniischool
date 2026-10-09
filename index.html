@@ -139,6 +139,30 @@
   .actions button + button { margin-left: 8px; }
   .error { color: var(--danger); font-size: .9rem; min-height: 1.2em; margin: 0 0 6px; }
 
+  .field.check { display: flex; align-items: center; }
+  .field.check input { width: auto; margin-right: 10px; transform: scale(1.3); }
+  .field.check span { display: inline; margin: 0; }
+
+  .gallery {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-gap: 14px; margin: 10px 0 4px;
+  }
+  .shot { margin: 0; }
+  .thumb {
+    display: block; width: 100%; padding: 0; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff;
+  }
+  .thumb:hover { border-color: var(--blue); }
+  .thumb img { display: block; width: 100%; height: 120px; object-fit: cover; }
+  .shot figcaption { margin-top: 6px; font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+  .shot .del { margin-top: 2px; padding-left: 0; }
+  #viewer { width: auto; max-width: 96vw; padding: 12px; text-align: center; background: #fff; }
+  #viewer img { display: block; max-width: 100%; max-height: 78vh; margin: 0 auto 12px; }
+  @media (pointer: coarse), (min-width: 1500px) {
+    .gallery { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .thumb img { height: 160px; }
+  }
+
   :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
   @media (pointer: coarse), (min-width: 1500px) {
@@ -181,6 +205,11 @@
   <form id="dlgForm" method="dialog"></form>
 </dialog>
 
+<dialog id="viewer">
+  <img id="viewerImg" alt="">
+  <button type="button" class="ghost" id="viewerClose">Chiudi</button>
+</dialog>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* ============ CONFIGURAZIONE: incolla qui i tuoi valori di Supabase ============ */
@@ -201,6 +230,10 @@ const $status = document.getElementById("status");
 const dlg = document.getElementById("dlg");
 const dlgTitle = document.getElementById("dlgTitle");
 const dlgForm = document.getElementById("dlgForm");
+const viewer = document.getElementById("viewer");
+const viewerImg = document.getElementById("viewerImg");
+document.getElementById("viewerClose").addEventListener("click", function () { viewer.close(); });
+viewer.addEventListener("click", function (e) { if (e.target === viewer) viewer.close(); });
 
 /* ---------- compatibilità con browser vecchi (es. LIM) ---------- */
 if (!Element.prototype.replaceChildren) {
@@ -289,6 +322,57 @@ function itemRow(it) {
   return row;
 }
 
+function isImage(it) {
+  return it.kind === "file" && /\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i.test(it.url);
+}
+
+function openViewer(it) {
+  viewerImg.src = it.url;
+  viewerImg.alt = it.title;
+  viewer.showModal();
+}
+
+function imageCard(it) {
+  const open = el("button", {
+    type: "button", class: "thumb", "aria-label": "Ingrandisci " + it.title,
+    onclick: function () { openViewer(it); }
+  }, el("img", { src: it.url, alt: it.title, loading: "lazy" }));
+  const card = el("figure", { class: "shot" }, open, el("figcaption", {}, it.title));
+  if (state.admin) card.append(el("button", { type: "button", class: "del", onclick: function () { deleteItem(it); } }, "Elimina"));
+  return card;
+}
+
+function itemsBlock(its) {
+  const box = el("div", {});
+  const others = its.filter(function (i) { return !isImage(i); });
+  const imgs = its.filter(isImage).sort(function (a, b) { return a.title.localeCompare(b.title, undefined, { numeric: true }); });
+  if (others.length) box.append(el("ul", { class: "list" }, ...others.map(itemRow)));
+  if (imgs.length) box.append(el("div", { class: "gallery" }, ...imgs.map(imageCard)));
+  return box;
+}
+
+function shrinkImage(file, maxSide, quality) {
+  return new Promise(function (resolve) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = function () {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      c.toBlob(function (b) { resolve(b && b.size < file.size ? b : null); }, "image/jpeg", quality);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
 function renderMain() {
   $main.replaceChildren();
   const cat = state.cats.find(c => c.id === state.selectedCat);
@@ -314,7 +398,7 @@ function renderMain() {
 
   if (loose.length) {
     $main.append(el("p", { class: "loose-title" }, "Fuori dalle cartelle"));
-    $main.append(el("ul", { class: "list" }, ...loose.map(itemRow)));
+    $main.append(itemsBlock(loose));
   }
 
   for (const f of folders) {
@@ -324,7 +408,7 @@ function renderMain() {
       sum.append(el("button", { type: "button", class: "del", onclick: (e) => { e.preventDefault(); deleteFolder(f); } }, "Elimina"));
     }
     const body = its.length
-      ? el("ul", { class: "list" }, ...its.map(itemRow))
+      ? itemsBlock(its)
       : el("p", { class: "empty-state" }, "Cartella vuota.");
     $main.append(el("details", { class: "folder", open: "" }, sum, body));
   }
@@ -341,6 +425,7 @@ function buildToolbar(cat) {
     el("button", { type: "button", class: "tool", disabled: !hasCat, onclick: addFolder }, "Nuova cartella"),
     el("button", { type: "button", class: "tool", disabled: !hasCat, onclick: addSite }, "Aggiungi sito"),
     el("button", { type: "button", class: "tool", disabled: !hasCat, onclick: addFile }, "Carica file"),
+    el("button", { type: "button", class: "tool", disabled: !hasCat, onclick: addFolderUpload }, "Carica cartella"),
     el("span", { class: "spacer" }),
     el("button", { type: "button", class: "ghost", onclick: logout }, "Esci")
   );
@@ -352,6 +437,12 @@ function openForm({ title, fields, submit, onSubmit }) {
   dlgForm.replaceChildren();
   for (const f of fields) {
     let input;
+    if (f.type === "checkbox") {
+      input = el("input", { name: f.name, type: "checkbox" });
+      if (f.checked) input.checked = true;
+      dlgForm.append(el("label", { class: "field check" }, input, el("span", {}, f.label)));
+      continue;
+    }
     if (f.type === "select") {
       input = el("select", { name: f.name });
       for (const o of f.options) input.append(el("option", { value: o.value }, o.label));
@@ -359,6 +450,8 @@ function openForm({ title, fields, submit, onSubmit }) {
       input = el("input", { name: f.name, type: f.type || "text" });
       if (f.placeholder) input.placeholder = f.placeholder;
       if (f.accept) input.accept = f.accept;
+      if (f.multiple) input.multiple = true;
+      if (f.directory) { input.setAttribute("webkitdirectory", ""); input.setAttribute("directory", ""); input.multiple = true; }
       if (f.value) input.value = f.value;
       if (f.autocomplete) input.setAttribute("autocomplete", f.autocomplete);
     }
@@ -372,12 +465,14 @@ function openForm({ title, fields, submit, onSubmit }) {
   dlgForm.onsubmit = async (e) => {
     e.preventDefault();
     err.textContent = "";
+    err.style.color = "";
     okBtn.disabled = true;
     try {
-      await onSubmit(new FormData(dlgForm));
+      await onSubmit(new FormData(dlgForm), function (m) { err.style.color = "var(--ink)"; err.textContent = m; });
       dlg.close();
       await load();
     } catch (ex) {
+      err.style.color = "";
       err.textContent = ex.message || "Errore imprevisto. Riprova.";
     } finally {
       okBtn.disabled = false;
@@ -442,26 +537,112 @@ function addSite() {
 
 function addFile() {
   openForm({
-    title: "Carica file",
+    title: "Carica file o immagini",
     submit: "Carica",
     fields: [
-      { name: "file", label: "File (max 50 MB)", type: "file", required: true },
-      { name: "title", label: "Titolo (se vuoto uso il nome del file)" },
-      { name: "folder", label: "Cartella", type: "select", options: folderOptions() }
+      { name: "file", label: "File o immagini (puoi sceglierne tanti insieme, max 50 MB ciascuno)", type: "file", required: true, multiple: true },
+      { name: "compress", label: "Riduci le immagini per risparmiare spazio (consigliato)", type: "checkbox", checked: true },
+      { name: "folder", label: "Cartella", type: "select", options: folderOptions() },
+      { name: "title", label: "Titolo (solo se scegli un file; altrimenti uso il nome del file)" }
     ],
-    onSubmit: async (fd) => {
-      const file = fd.get("file");
-      if (!file || !file.size) throw new Error("Scegli un file.");
-      const path = `${Date.now()}-${file.name.replace(/[^\w.\-]+/g, "_")}`;
-      check(await db.storage.from(BUCKET).upload(path, file));
-      const { data } = db.storage.from(BUCKET).getPublicUrl(path);
-      check(await db.from("items").insert({
-        category_id: state.selectedCat,
-        folder_id: fd.get("folder") || null,
-        title: (fd.get("title") || "").trim() || file.name,
-        kind: "file",
-        url: data.publicUrl
-      }));
+    onSubmit: async (fd, say) => {
+      const files = fd.getAll("file").filter(function (f) { return f && f.size; });
+      if (!files.length) throw new Error("Scegli almeno un file.");
+      const compress = !!fd.get("compress");
+      const customTitle = (fd.get("title") || "").trim();
+      const folderId = fd.get("folder") || null;
+      const failed = [];
+      let lastErr = "";
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        say("Carico " + (i + 1) + " di " + files.length + "…");
+        try {
+          let body = f, name = f.name;
+          if (compress && /^image\/(jpeg|png|webp)$/.test(f.type)) {
+            const small = await shrinkImage(f, 1600, 0.82);
+            if (small) { body = small; name = f.name.replace(/\.[^.]+$/, "") + ".jpg"; }
+          }
+          const path = Date.now() + "-" + i + "-" + name.replace(/[^\w.\-]+/g, "_");
+          check(await db.storage.from(BUCKET).upload(path, body, { contentType: body.type || undefined }));
+          const pub = db.storage.from(BUCKET).getPublicUrl(path);
+          check(await db.from("items").insert({
+            category_id: state.selectedCat,
+            folder_id: folderId,
+            title: (files.length === 1 && customTitle) ? customTitle : f.name,
+            kind: "file",
+            url: pub.data.publicUrl
+          }));
+        } catch (e) {
+          failed.push(f.name);
+          lastErr = e.message || "";
+        }
+      }
+      if (failed.length) {
+        await load();
+        throw new Error("Non caricati (" + failed.length + "): " + failed.join(", ") + (lastErr ? " — " + lastErr : ""));
+      }
+    }
+  });
+}
+
+function addFolderUpload() {
+  openForm({
+    title: "Carica una cartella",
+    submit: "Carica cartella",
+    fields: [
+      { name: "file", label: "Scegli la cartella dal computer (le sottocartelle diventano cartelle)", type: "file", required: true, directory: true },
+      { name: "compress", label: "Riduci le immagini per risparmiare spazio (consigliato)", type: "checkbox", checked: true }
+    ],
+    onSubmit: async (fd, say) => {
+      const input = dlgForm.querySelector("input[type=file]");
+      const all = Array.from(input.files).filter(function (f) {
+        return f.size && !/^(thumbs\.db|desktop\.ini|\.ds_store)$/i.test(f.name);
+      });
+      if (!all.length) throw new Error("La cartella è vuota.");
+      const compress = !!fd.get("compress");
+      const groups = {};
+      all.forEach(function (f) {
+        const parts = (f.webkitRelativePath || f.name).split("/");
+        parts.pop();
+        const dir = parts.join(" / ") || "Senza nome";
+        (groups[dir] = groups[dir] || []).push(f);
+      });
+      const failed = [];
+      let lastErr = "", n = 0;
+      for (const dir of Object.keys(groups)) {
+        let folder = state.folders.find(function (x) { return x.category_id === state.selectedCat && x.name === dir; });
+        if (!folder) {
+          folder = check(await db.from("folders").insert({ category_id: state.selectedCat, name: dir }).select().single());
+          state.folders.push(folder);
+        }
+        const list = groups[dir].sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { numeric: true }); });
+        for (let i = 0; i < list.length; i++) {
+          const f = list[i];
+          n++;
+          say("Carico " + n + " di " + all.length + "…");
+          try {
+            let body = f, name = f.name;
+            if (compress && /^image\/(jpeg|png|webp)$/.test(f.type)) {
+              const small = await shrinkImage(f, 1600, 0.82);
+              if (small) { body = small; name = f.name.replace(/\.[^.]+$/, "") + ".jpg"; }
+            }
+            const path = Date.now() + "-" + n + "-" + name.replace(/[^\w.\-]+/g, "_");
+            check(await db.storage.from(BUCKET).upload(path, body, { contentType: body.type || undefined }));
+            const pub = db.storage.from(BUCKET).getPublicUrl(path);
+            check(await db.from("items").insert({
+              category_id: state.selectedCat, folder_id: folder.id,
+              title: f.name, kind: "file", url: pub.data.publicUrl
+            }));
+          } catch (e) {
+            failed.push(f.name);
+            lastErr = e.message || "";
+          }
+        }
+      }
+      if (failed.length) {
+        await load();
+        throw new Error("Non caricati (" + failed.length + "): " + failed.slice(0, 5).join(", ") + (failed.length > 5 ? "…" : "") + (lastErr ? " — " + lastErr : ""));
+      }
     }
   });
 }
